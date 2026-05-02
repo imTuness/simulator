@@ -449,7 +449,7 @@ def list_parquets(folder):
 def load_parquet(path):
     df = pd.read_parquet(path)
     if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"], dayfirst=True)
+        df["date"] = pd.to_datetime(df["date"])
     return df
 
 
@@ -596,6 +596,20 @@ def find_best(parquets_meta, df_abc, mode, sku_or_class, fill_rate_target=95.0):
 
 folder = "."
 
+# ── Check for parquet files BEFORE entering sidebar ──
+parquets_meta = list_parquets(folder)
+if not parquets_meta:
+    st.markdown(f"""
+    <div class="db-title"><span style="font-size:1.6rem;">📦</span> Stock Management <span>Simulator</span></div>
+    <div class="db-sub">Group 3 – MEGI · Supply Chain Management</div>
+    """, unsafe_allow_html=True)
+    st.error("⚠️ No simulation files (.parquet) found in the working directory.")
+    st.info(
+        "**How to fix:** Add at least one `simulator_*.parquet` file to the root of your repository "
+        "and push it to GitHub. The dashboard will load automatically once the files are present."
+    )
+    st.stop()
+
 with st.sidebar:
     # ── Logos side by side (NOVA IMS + LTPLabs) ──
     # Each logo is loaded via st.image with a public URL.
@@ -620,11 +634,6 @@ with st.sidebar:
       <div style='font-size:0.65rem;color:{GREY_MID};margin-top:1px;'>2025/2026</div>
     </div>""", unsafe_allow_html=True)
     st.markdown("---")
-
-    parquets_meta = list_parquets(folder)
-    if not parquets_meta:
-        st.error("No .parquet files found.")
-        st.stop()
 
     df_abc, abc_error = load_abc_xyz(folder)
     
@@ -654,8 +663,7 @@ with st.sidebar:
                 pass
         all_skus = sorted(all_skus)
         if not all_skus:
-            st.error("No SKUs found.")
-            st.stop()
+            st.error("No SKUs found in parquet files.")
         sku_sel = st.selectbox("SKU", all_skus, label_visibility="collapsed")
         if df_abc is not None:
             match = df_abc[df_abc["sku"] == sku_sel]["Classe_ABC_XYZ"]
@@ -667,7 +675,6 @@ with st.sidebar:
         st.markdown(f"<div class='step-lbl'>② Select Class</div>", unsafe_allow_html=True)
         if df_abc is None:
             st.error(f"ABC/XYZ not loaded: {abc_error}")
-            st.stop()
         # FIX 2: Use actual Classe_ABC_XYZ values from the ABC/XYZ excel
         classes = sorted(df_abc["Classe_ABC_XYZ"].unique())
         class_sel = st.selectbox("ABC/XYZ Class", classes, label_visibility="collapsed")
@@ -720,7 +727,6 @@ with st.sidebar:
         )
         if not selected_file:
             st.error("Combination not found.")
-            st.stop()
 
         # ④ Fill Rate target for Best Combination finder
         st.markdown("---")
@@ -868,7 +874,7 @@ if mode == "Overview":
                               title="Avg Fill Rate β by Policy",
                               yaxis=dict(gridcolor=GREY_BDR, title="%"),
                               xaxis=dict(gridcolor=GREY_BDR))
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
 
         with col_b:
             fig2 = go.Figure()
@@ -880,7 +886,7 @@ if mode == "Overview":
                                title="Avg Total Cost by Policy",
                                yaxis=dict(gridcolor=GREY_BDR, title="€"),
                                xaxis=dict(gridcolor=GREY_BDR))
-            st.plotly_chart(fig2, width='stretch')
+            st.plotly_chart(fig2, use_container_width=True)
 
     # ── ABC/XYZ Class breakdown
     if df_abc is not None and "sku" in df_all.columns:
@@ -923,7 +929,7 @@ if mode == "Overview":
                                   title="Best Fill Rate β by ABC/XYZ Class",
                                   yaxis=dict(gridcolor=GREY_BDR, title="%"),
                                   xaxis=dict(gridcolor=GREY_BDR))
-            st.plotly_chart(fig_cls, width='stretch')
+            st.plotly_chart(fig_cls, use_container_width=True)
 
         with col_cls_tbl:
             fmt_best = {
@@ -934,7 +940,7 @@ if mode == "Overview":
             styled_best = styled_best.background_gradient(
                 subset=["Fill Rate β (%)"], cmap="RdYlGn", vmin=80, vmax=100
             )
-            st.dataframe(styled_best, width='stretch', height=260, hide_index=True)
+            st.dataframe(styled_best, use_container_width=True, height=260, hide_index=True)
    
     # ── SKU Distribution
     st.markdown("<div class='sec-hdr'>◆ SKU Distribution — Fill Rate & Cost</div>",
@@ -958,7 +964,7 @@ if mode == "Overview":
                                 title="Fill Rate β Distribution (avg per SKU)",
                                 xaxis=dict(title="%", gridcolor=GREY_BDR),
                                 yaxis=dict(title="Number of SKUs", gridcolor=GREY_BDR))
-            st.plotly_chart(fig_h, width='stretch')
+            st.plotly_chart(fig_h, use_container_width=True)
 
         with col_scatter:
             fig_s = go.Figure()
@@ -974,7 +980,7 @@ if mode == "Overview":
                                 title="Fill Rate vs Cost per SKU (avg)",
                                 xaxis=dict(title="Total Cost (€)", gridcolor=GREY_BDR),
                                 yaxis=dict(title="Fill Rate β (%)", gridcolor=GREY_BDR))
-            st.plotly_chart(fig_s, width='stretch')
+            st.plotly_chart(fig_s, use_container_width=True)
 
     # ── Top / Bottom SKU ranking
     st.markdown("<div class='sec-hdr'>◆ SKU Ranking</div>", unsafe_allow_html=True)
@@ -986,13 +992,13 @@ if mode == "Overview":
             top10 = df_sku_avg.nlargest(10,"fill_rate")[["sku","fill_rate","cost_total"]] \
                               .rename(columns={"sku":"SKU","fill_rate":"Fill Rate β (%)","cost_total":"Avg Cost (€)"})
             st.dataframe(top10.style.format({"Fill Rate β (%)":"{:.2f}","Avg Cost (€)":"{:,.2f}"},
-                         na_rep="—"), width='stretch', height=320, hide_index=True)
+                         na_rep="—"), use_container_width=True, height=320, hide_index=True)
         with col_bot:
             st.markdown(f"<div style='font-size:0.74rem;font-weight:600;color:#C0392B;margin-bottom:4px;'>⚠ Bottom 10 — Lowest Fill Rate</div>", unsafe_allow_html=True)
             bot10 = df_sku_avg.nsmallest(10,"fill_rate")[["sku","fill_rate","cost_total"]] \
                               .rename(columns={"sku":"SKU","fill_rate":"Fill Rate β (%)","cost_total":"Avg Cost (€)"})
             st.dataframe(bot10.style.format({"Fill Rate β (%)":"{:.2f}","Avg Cost (€)":"{:,.2f}"},
-                         na_rep="—"), width='stretch', height=320, hide_index=True)
+                         na_rep="—"), use_container_width=True, height=320, hide_index=True)
 
     # ── Global Best Combination
     st.markdown("<div class='sec-hdr'>◆ Global Best Combination</div>", unsafe_allow_html=True)
@@ -1066,7 +1072,7 @@ if mode == "Overview":
             )
             df_show_g = df_show_g[["Policy", "SL (%)", "k", "Fill Rate β (%)", "Total Cost (€)", "Meets Target"]] \
                                   .sort_values("Fill Rate β (%)", ascending=False)
-            st.dataframe(df_show_g, width='stretch', height=200, hide_index=True)
+            st.dataframe(df_show_g, use_container_width=True, height=200, hide_index=True)
 
         # ── 3. Scatter plot Fill Rate vs Custo
         st.markdown("<div class='sec-hdr'>◆ Fill Rate vs Cost — All Combinations</div>",
@@ -1125,7 +1131,7 @@ if mode == "Overview":
                         bgcolor="rgba(0,0,0,0)"),
             hovermode="closest",
         )
-        st.plotly_chart(fig_sc, width='stretch')
+        st.plotly_chart(fig_sc, use_container_width=True)
 
     st.markdown("---")
     st.caption("📦 Stock Management Simulator · Group 3 – MEGI · Supply Chain Management")
@@ -1288,7 +1294,7 @@ if "date" in df_filtered.columns and "soh_final" in df_filtered.columns:
                    dtick="M1", tickformat="%b %Y", hoverformat="%d %b %Y"),
         hovermode="x unified",
     )
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("Columns 'date' or 'soh_final' not found in parquet file.")
 
@@ -1315,7 +1321,7 @@ if cs_c and ct_c and "date" in df_filtered.columns:
                             yaxis=dict(gridcolor=GREY_BDR, title="€"),
                             legend=dict(orientation="h", yanchor="bottom", y=1.02,
                                         bgcolor="rgba(0,0,0,0)"))
-        st.plotly_chart(fig_b, width='stretch')
+        st.plotly_chart(fig_b, use_container_width=True)
     with col_pie:
         fig_p = go.Figure(go.Pie(
             labels=["Stock Cost","Transport Cost"],
@@ -1323,7 +1329,7 @@ if cs_c and ct_c and "date" in df_filtered.columns:
             hole=0.55, marker=dict(colors=["#5BA3B5", "#F0A868"]),
         ))
         fig_p.update_layout(**PLOT, height=260, margin=dict(l=10,r=10,t=10,b=10))
-        st.plotly_chart(fig_p, width='stretch')
+        st.plotly_chart(fig_p, use_container_width=True)
 
 # ── Performance Metrics
 metrics = compute_metrics(df_filtered)
@@ -1384,7 +1390,7 @@ if mode == "By ABC/XYZ Class":
             df_sku_tbl["MOQ "] = df_sku_tbl["SKU"].map(
                 lambda s: f"{int(moq_map[s]):,}" if s in moq_map and pd.notna(moq_map[s]) else "—"
             )
-        st.dataframe(df_sku_tbl, width='stretch', height=min(400, 40 + 35 * len(sku_list)), hide_index=True)
+        st.dataframe(df_sku_tbl, use_container_width=True, height=min(400, 40 + 35 * len(sku_list)), hide_index=True)
     else:
         st.info("No SKUs found for this class in the selected parquet file.")
 
@@ -1428,7 +1434,7 @@ if res:
         )
         df_show = df_show[["Policy","SL (%)","k","Fill Rate β (%)","Total Cost (€)","Meets Target"]] \
                           .sort_values("Fill Rate β (%)", ascending=False)
-        st.dataframe(df_show, width='stretch', height=150, hide_index=True)
+        st.dataframe(df_show, use_container_width=True, height=150, hide_index=True)
 else:
     total_demand = df_filtered["demand"].sum() if "demand" in df_filtered.columns else 0
     total_forecast = df_filtered["forecast"].sum() if "forecast" in df_filtered.columns else 0
