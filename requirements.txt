@@ -1,7 +1,0 @@
-streamlit
-pandas
-plotly
-matplotlib
-spicy
-openpyxl
-fastparquet
