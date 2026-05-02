@@ -1445,4 +1445,4 @@ else:
 
 
 st.markdown("---")
-st.caption("📦 Stock Management Simulator · Group 3 – MEGI · Supply Chain Management")
+st.caption("📦 Stock Management Simulator · Group 3 – MEGI · Supply Chain Management")# updated
