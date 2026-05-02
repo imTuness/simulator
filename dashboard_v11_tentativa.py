@@ -20,12 +20,6 @@ import os, re, glob
 # ─────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────
-st.set_page_config(
-    page_title="Stock Simulator",
-    page_icon="📦",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
 # ─────────────────────────────────────────────
 # PALETTE
